@@ -5,20 +5,55 @@ A demonstration of the **Model Context Protocol (MCP)** using Claude as the AI b
 ## Architecture
 
 ```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Claude Desktop                           │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │                     Claude AI                           │   │
+│  └────────────┬─────────────────────────┬──────────────────┘   │
+│               │ MCP (stdio)             │ MCP (stdio)           │
+│  ┌────────────▼────────────┐  ┌─────────▼──────────────────┐   │
+│  │     mcp-postgres        │  │       mcp-reporter          │   │
+│  │  ┌───────────────────┐  │  │  ┌──────────────────────┐  │   │
+│  │  │  9 tools          │  │  │  │  1 tool              │  │   │
+│  │  │  get_all_products │  │  │  │  send_report(subject, │  │   │
+│  │  │  get_all_orders   │  │  │  │    body, to_email)    │  │   │
+│  │  │  get_low_stock    │  │  │  └──────────────────────┘  │   │
+│  │  │  ...              │  │  └───────────────┬────────────┘   │
+│  │  └───────────────────┘  │                  │ SMTP            │
+│  └────────────┬────────────┘         ┌────────▼───────┐        │
+│               │ SQL                  │   Gmail SMTP   │        │
+│  ┌────────────▼────────────┐         └────────────────┘        │
+│  │     PostgreSQL DB       │                                    │
+│  │  products / orders      │                                    │
+│  └─────────────────────────┘                                    │
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                       mcp-client (CLI)                          │
+│                                                                 │
+│  User prompt                                                    │
+│      │                                                          │
+│      ▼                                                          │
+│  Claude API (claude-opus-4-6)                                   │
+│      │                                                          │
+│      │ MCP (stdio)             MCP (stdio)                      │
+│      ├────────────────────────────────────────────────┐         │
+│      ▼                                                ▼         │
+│  mcp-postgres                                  mcp-reporter     │
+│  (PostgreSQL tools)                            (Email tools)    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Project Layout
+
+```
 mcp-demo/
 ├── servers/
 │   ├── mcp-postgres/     MCP server — products & orders tools
 │   └── mcp-reporter/     MCP server — email report sender
 └── clients/
     └── mcp-client/       Interactive CLI powered by Claude
-```
-
-```
-User → mcp-client → Claude (claude-opus-4-6)
-                         ↓
-              ┌──────────┴──────────┐
-         mcp-postgres          mcp-reporter
-         (PostgreSQL)          (Gmail SMTP)
 ```
 
 ## Servers
