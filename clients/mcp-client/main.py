@@ -69,7 +69,10 @@ async def main():
                 })
             print(f"[{name}] connected — {len(tools)} tools")
 
-        print(f"\nReady with {len(all_tools)} tools total. Type 'quit' to exit.\n")
+        print(f"\nReady with {len(all_tools)} tools total:")
+        for tool in all_tools:
+            print(f"  - {tool['name']}")
+        print("\nType 'quit' to exit.\n")
 
         messages: list[dict] = []
 
