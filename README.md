@@ -35,7 +35,7 @@ flowchart TD
 flowchart TD
     U["👤 User"]
     MC["💻 mcp-client (CLI)"]
-    CA["🤖 Claude API\nclaude-opus-4-6"]
+    CA["🤖 Claude API\nclaude-sonnet-4-6"]
 
     subgraph mcp-postgres["mcp-postgres (MCP Server)"]
         PG_TOOLS["PostgreSQL tools"]
@@ -45,15 +45,22 @@ flowchart TD
         RP_TOOLS["Email tools"]
     end
 
+    subgraph exa["Exa (Remote MCP Server)"]
+        EXA_TOOLS["Web search tools"]
+    end
+
     DB[("🐘 PostgreSQL")]
     GM["📧 Gmail SMTP"]
+    WEB["🌐 Web"]
 
     U -->|prompt| MC
     MC --> CA
     CA -->|"MCP (stdio)"| mcp-postgres
     CA -->|"MCP (stdio)"| mcp-reporter
+    CA -->|"MCP (HTTP)"| exa
     mcp-postgres -->|SQL| DB
     mcp-reporter -->|SMTP| GM
+    exa -->|search| WEB
 ```
 
 ### Project Layout
@@ -86,6 +93,7 @@ mcp-demo/
 - [uv](https://docs.astral.sh/uv/) package manager
 - PostgreSQL running locally
 - Gmail account with an App Password
+- [Exa](https://exa.ai) account for web search (free tier: 1,000 searches/month)
 
 ## Quick Start
 
@@ -109,6 +117,7 @@ uv run main.py
 You: Show me all pending orders
 You: Which products are low on stock?
 You: Send an orders summary report to my email
+You: Search the web for the latest PostgreSQL features
 ```
 
 ## Claude Desktop Integration

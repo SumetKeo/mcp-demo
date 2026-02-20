@@ -6,14 +6,24 @@ from anthropic import Anthropic
 from dotenv import load_dotenv
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from mcp.client.streamable_http import streamablehttp_client
 
 load_dotenv()
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-SERVERS = {
+# Local MCP servers (stdio)
+LOCAL_SERVERS = {
     "mcp-postgres": os.path.join(BASE_DIR, "servers", "mcp-postgres"),
     "mcp-reporter": os.path.join(BASE_DIR, "servers", "mcp-reporter"),
+}
+
+# Remote MCP servers (HTTP) — { name: (url, headers) }
+REMOTE_SERVERS = {
+    "exa": (
+        "https://mcp.exa.ai/mcp",
+        {"x-api-key": os.getenv("EXA_API_KEY", "")},
+    ),
 }
 
 
@@ -23,14 +33,30 @@ async def main():
     all_tools: list[dict] = []
 
     async with AsyncExitStack() as stack:
-        # Connect to each MCP server
-        for name, directory in SERVERS.items():
+        # Connect to local stdio servers
+        for name, directory in LOCAL_SERVERS.items():
             params = StdioServerParameters(
                 command="uv",
                 args=["--directory", directory, "run", "main.py"]
             )
             transport = await stack.enter_async_context(stdio_client(params))
             session = await stack.enter_async_context(ClientSession(*transport))
+            await session.initialize()
+
+            tools = (await session.list_tools()).tools
+            for tool in tools:
+                tool_sessions[tool.name] = session
+                all_tools.append({
+                    "name": tool.name,
+                    "description": tool.description,
+                    "input_schema": tool.inputSchema,
+                })
+            print(f"[{name}] connected — {len(tools)} tools")
+
+        # Connect to remote HTTP servers
+        for name, (url, headers) in REMOTE_SERVERS.items():
+            transport = await stack.enter_async_context(streamablehttp_client(url, headers=headers))
+            session = await stack.enter_async_context(ClientSession(*transport[:2]))
             await session.initialize()
 
             tools = (await session.list_tools()).tools
@@ -59,7 +85,7 @@ async def main():
             # Agentic loop
             while True:
                 response = client.messages.create(
-                    model="claude-opus-4-6",
+                    model="claude-sonnet-4-6",
                     max_tokens=4096,
                     tools=all_tools,
                     messages=messages,
